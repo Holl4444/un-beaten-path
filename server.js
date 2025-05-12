@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import * as dotenv from 'dotenv';
 import { getDataFromDB } from './database/db.js';
 import addRes from './utils/addResponse.js';
-import filterData from './utils/filterData.js';
+import filterData, {filterByQuery} from './utils/filterData.js';
 
 dotenv.config();
 const PORT = process.env.PORT || 3000;
@@ -10,8 +10,22 @@ const PORT = process.env.PORT || 3000;
 const server = createServer(async (req, res) => {
     const destinations = await getDataFromDB()
 
-    if (req.url === '/api' && req.method === 'GET') {
-        addRes(res, {data: destinations})
+    // get dynamic url
+    const urlObj = new URL(req.url, `http://${req.headers.host}`);
+    // create an object from any query parameters
+    const queryObj = Object.fromEntries(urlObj.searchParams);
+
+    // pathname = '/api' so true for all extension of '/api' like continent/queryparams etc
+    if (urlObj.pathname === '/api' && req.method === 'GET') {
+        //If there are queryparameters
+        if (Object.keys(queryObj).length > 0) {
+            addRes(res, { data: filterByQuery(destinations, queryObj) });
+        } else {
+            //return all data
+            addRes(res, { data: destinations });
+        }
+
+        
 
     } else if (req.url.startsWith('/api/continent') && req.method === 'GET') {
         const continent = filterData(destinations, req.url);        
